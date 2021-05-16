@@ -100,42 +100,42 @@ class Capsule(layers.Layer):
         # Begin: Routing algorithm ---------------------------------------------------------------------#
         # The prior for coupling coefficient, initialized as zeros.
         # b.shape = [None, self.num_capsule, self.input_num_capsule].
-        # b = tf.zeros(shape=[k.shape(self.input_hat)[0], self.num_capsule, self.input_num_capsule])
+        b = tf.zeros(shape=[k.shape(self.input_hat)[0], self.num_capsule, self.input_num_capsule])
 
-        # assert self.routings > 0, 'The routings should be > 0.'
-        # for i in range(self.routings):
-        #     # c.shape=[batch_size, num_capsule, input_num_capsule]
-        #     c = tf.nn.softmax(logits=b, axis=1)
-        #     self.cc_list[i] = c
+        assert self.routings > 0, 'The routings should be > 0.'
+        for i in range(self.routings):
+            # c.shape=[batch_size, num_capsule, input_num_capsule]
+            c = tf.nn.softmax(logits=b, axis=1)
+            self.cc_list[i] = c
 
-        #     # c_expanded.shape =  [None, num_capsule, 1, input_num_capsule]
-        #     # inputs_hat.shape=[None, num_capsule, input_num_capsule, dim_capsule]
-        #     # The first two dimensions as `batch` dimension,
-        #     # then matmul: [1, input_num_capsule] x [input_num_capsule, dim_capsule] -> [1, dim_capsule].
-        #     # outputs.shape=[None, num_capsule, dim_capsule]
-        #     c_expanded = k.expand_dims(x=c, axis=-2)
-        #     output_ns = tf.linalg.matmul(a=c_expanded, b=self.input_hat)
-        #     output_ns = tf.squeeze(input=output_ns, axis=-2)
-        #     output = squash(vectors=output_ns)
-        #     self.output_ns_list[i] = output_ns
-        #     self.output_s_list[i] = output
+            # c_expanded.shape =  [None, num_capsule, 1, input_num_capsule]
+            # inputs_hat.shape=[None, num_capsule, input_num_capsule, dim_capsule]
+            # The first two dimensions as `batch` dimension,
+            # then matmul: [1, input_num_capsule] x [input_num_capsule, dim_capsule] -> [1, dim_capsule].
+            # outputs.shape=[None, num_capsule, dim_capsule]
+            c_expanded = k.expand_dims(x=c, axis=-2)
+            output_ns = tf.linalg.matmul(a=c_expanded, b=self.input_hat)
+            output_ns = tf.squeeze(input=output_ns, axis=-2)
+            output = squash(vectors=output_ns)
+            self.output_ns_list[i] = output_ns
+            self.output_s_list[i] = output
 
-        #     if i < self.routings - 1:
-        #         # outputs.shape =  [None, num_capsule, dim_capsule]
-        #         # outputs_expanded.shape =  [None, num_capsule, dim_capsule, 1]
-        #         # inputs_hat.shape=[None, num_capsule, input_num_capsule, dim_capsule]
-        #         # The first two dimensions as `batch` dimension,
-        #         # then matmul: [input_num_capsule, dim_capsule] x [dim_capsule, 1]
-        #         # b.shape=[batch_size, num_capsule, input_num_capsule]
-        #         output_expanded = k.expand_dims(x=output, axis=-1)
-        #         aux_b = tf.linalg.matmul(a=self.input_hat, b=output_expanded)
-        #         aux_b = tf.squeeze(input=aux_b, axis=-1)
-        #         self.b_bias_list[i] = b
-        #         b += aux_b
-        #         self.b_out_list[i] = b
+            if i < self.routings - 1:
+                # outputs.shape =  [None, num_capsule, dim_capsule]
+                # outputs_expanded.shape =  [None, num_capsule, dim_capsule, 1]
+                # inputs_hat.shape=[None, num_capsule, input_num_capsule, dim_capsule]
+                # The first two dimensions as `batch` dimension,
+                # then matmul: [input_num_capsule, dim_capsule] x [dim_capsule, 1]
+                # b.shape=[batch_size, num_capsule, input_num_capsule]
+                output_expanded = k.expand_dims(x=output, axis=-1)
+                aux_b = tf.linalg.matmul(a=self.input_hat, b=output_expanded)
+                aux_b = tf.squeeze(input=aux_b, axis=-1)
+                self.b_bias_list[i] = b
+                b += aux_b
+                self.b_out_list[i] = b
             # End: Routing algorithm -----------------------------------------------------------------------#
 
-        return self.input_hat
+        return output
 
     def set_weights(self, weights):
         self.w = weights
