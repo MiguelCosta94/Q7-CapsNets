@@ -133,7 +133,7 @@ def get_act_q_format(io_per_layer):
     act_q_format = []
 
     for io_layer in io_per_layer:
-        if ('conv2' in io_layer['layer']) or ('dense' in io_layer['layer']):
+        if ('conv2d' in io_layer['layer']) or ('dense' in io_layer['layer']):
             entry = qb.get_act_q_format_std_layer(io_layer)
             act_q_format.append(entry)
 
@@ -275,7 +275,7 @@ def list_to_csv(data, filename):
 
 def main():
     start_time = time.time()
-    model = tf.keras.models.load_model("cnn.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
+    model = tf.keras.models.load_model("caps_net.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
                                                                       'Capsule': Capsule, 'Length': Length,
                                                                       'margin_loss': margin_loss})
 

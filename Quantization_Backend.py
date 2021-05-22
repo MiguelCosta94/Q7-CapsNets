@@ -23,7 +23,7 @@ def quantize(data, frac_bits):
     data = np.round(data * (2 ** frac_bits))
     data = data.astype(int)
     data = np.minimum(data, 127)
-    data = np.maximum(data, -127)
+    data = np.maximum(data, -128)
 
     return data
 
