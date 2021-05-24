@@ -56,10 +56,10 @@ def get_io_per_layer(model, train_data):
             output_per_layer.append(entry)
 
         elif 'capsule' in layer.get_config()['name']:
-            output, input_hat, output_ns_list, output_s_list, cc_list, b_out_list, b_bias_list = qb.get_cap_detailed_output(layer, input)
+            output, input_hat, output_ns_list, output_s_list, cc_list, b_inst_list, b_old_list, b_new_list = qb.get_cap_detailed_output(layer, input)
             entry = {"layer": layer.get_config()["name"], "input": input, "input_hat": input_hat,
                      "output_ns_list": output_ns_list, "output_s_list": output_s_list, "cc_list": cc_list,
-                     "b_out_list": b_out_list, "b_bias_list": b_bias_list, "output": output}
+                     "b_inst_list": b_inst_list, "b_old_list": b_old_list, "b_new_list": b_new_list, "output": output}
             output_per_layer.append(entry)
 
         else:
@@ -170,8 +170,13 @@ def get_output_shift(act_q_format_list, wt_q_format_list, model):
                 entry["output_shift_"+str(i)] = shift
             for i in range(num_routings-1):
                 shift = act_q_format["input_hat"]["frac_bits"] + act_q_format["output_s_"+str(i)]["frac_bits"] -\
-                        act_q_format["b_out_"+str(i)]["frac_bits"]
-                entry["b_shift_"+str(i)] = shift
+                        act_q_format["b_inst_"+str(i)]["frac_bits"]
+                entry["b_inst_shift_"+str(i)] = shift
+
+                shift = act_q_format["b_inst_"+str(i)]["frac_bits"] + act_q_format["b_old_"+str(i)]["frac_bits"] -\
+                        act_q_format["b_new_"+str(i)]["frac_bits"]
+                entry["b_new_shift_"+str(i)] = shift
+
             shift_list.append(entry)
 
         else:
@@ -192,18 +197,6 @@ def get_bias_shift(bias_q_format_list, act_q_format_list, wt_q_format_list, mode
 
             shift = act_q_format["input"]["frac_bits"] + wt_q_format["frac_bits"] - bias_q_format["frac_bits"]
             entry = {"layer": bias_q_format["layer"], "shift": shift}
-            shift_list.append(entry)
-
-    for act_q_format in act_q_format_list:
-        if ('primary_capsule' not in act_q_format["layer"]) and ('capsule' in act_q_format["layer"]):
-            num_routings = model.get_layer(act_q_format["layer"]).routings
-            entry = {"layer": act_q_format["layer"]}
-
-            for i in range(num_routings-1):
-                shift = act_q_format["input_hat"]["frac_bits"] + act_q_format["output_s_"+str(i)]["frac_bits"] -\
-                        act_q_format["b_bias_"+str(i)]["frac_bits"]
-                entry["shift_rout_"+str(i)] = shift
-
             shift_list.append(entry)
 
     return shift_list

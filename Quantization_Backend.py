@@ -73,16 +73,18 @@ def get_cap_detailed_output(layer, input_data):
         output_ns_list_batch = layer.get_output_ns_list()
         output_s_list_batch = layer.get_output_s_list()
         cc_list_batch = layer.get_cc_list()
-        b_out_list_batch = layer.get_b_out_list()
-        b_bias_list_batch = layer.get_b_bias_list()
+        b_inst_list_batch = layer.get_b_inst_list()
+        b_new_list_batch = layer.get_b_new_list()
+        b_old_list_batch = layer.get_b_old_list()
 
         output_batch = output_batch.numpy()
         input_hat_batch = input_hat_batch.numpy()
         output_ns_list_batch = [x.numpy() for x in output_ns_list_batch]
         output_s_list_batch = [x.numpy() for x in output_s_list_batch]
         cc_list_batch = [x.numpy() for x in cc_list_batch]
-        b_out_list_batch = [x.numpy() for x in b_out_list_batch]
-        b_bias_list_batch = [x.numpy() for x in b_bias_list_batch]
+        b_inst_list_batch = [x.numpy() for x in b_inst_list_batch]
+        b_new_list_batch = [x.numpy() for x in b_new_list_batch]
+        b_old_list_batch = [x.numpy() for x in b_old_list_batch]
 
         if i > 0:
             output = np.append(output, output_batch, axis=0)
@@ -90,18 +92,20 @@ def get_cap_detailed_output(layer, input_data):
             output_ns_list = [np.append(x, y, axis=0) for x, y in zip(output_ns_list, output_ns_list_batch)]
             output_s_list = [np.append(x, y, axis=0) for x, y in zip(output_s_list, output_s_list_batch)]
             cc_list = [np.append(x, y, axis=0) for x, y in zip(cc_list, cc_list_batch)]
-            b_out_list = [np.append(x, y, axis=0) for x, y in zip(b_out_list, b_out_list_batch)]
-            b_bias_list = [np.append(x, y, axis=0) for x, y in zip(b_bias_list, b_bias_list_batch)]
+            b_inst_list = [np.append(x, y, axis=0) for x, y in zip(b_inst_list, b_inst_list_batch)]
+            b_new_list = [np.append(x, y, axis=0) for x, y in zip(b_new_list, b_new_list_batch)]
+            b_old_list = [np.append(x, y, axis=0) for x, y in zip(b_old_list, b_old_list_batch)]
         else:
             output = output_batch
             input_hat = input_hat_batch
             output_ns_list = output_ns_list_batch
             output_s_list = output_s_list_batch
             cc_list = cc_list_batch
-            b_out_list = b_out_list_batch
-            b_bias_list = b_bias_list_batch
+            b_inst_list = b_inst_list_batch
+            b_new_list = b_new_list_batch
+            b_old_list = b_old_list_batch
 
-    return output, input_hat, output_ns_list, output_s_list, cc_list, b_out_list, b_bias_list
+    return output, input_hat, output_ns_list, output_s_list, cc_list, b_inst_list, b_new_list, b_old_list
 
 
 def get_act_q_format_std_layer(io_layer):
@@ -146,13 +150,16 @@ def get_act_q_format_cap(io_layer):
         qmn_cc = {"int_bits": qm, "frac_bits": qn}
         fmt["cc_" + str(rout_it)] = qmn_cc
 
-    for rout_it, (b_out, b_bias) in enumerate(zip(io_layer['b_out_list'], io_layer['b_bias_list'])):
-        qm, qn = get_q_format(b_out)
-        qmn_b_out = {"int_bits": qm, "frac_bits": qn}
-        fmt["b_out_" + str(rout_it)] = qmn_b_out
-        qm, qn = get_q_format(b_bias)
-        qmn_b_bias = {"int_bits": qm, "frac_bits": qn}
-        fmt["b_bias_" + str(rout_it)] = qmn_b_bias
+    for rout_it, (b_inst, b_old, b_new) in enumerate(zip(io_layer['b_inst_list'], io_layer['b_old_list'], io_layer['b_new_list'])):
+        qm, qn = get_q_format(b_inst)
+        qmn_b_inst = {"int_bits": qm, "frac_bits": qn}
+        fmt["b_inst_" + str(rout_it)] = qmn_b_inst
+        qm, qn = get_q_format(b_old)
+        qmn_b_old = {"int_bits": qm, "frac_bits": qn}
+        fmt["b_old_" + str(rout_it)] = qmn_b_old
+        qm, qn = get_q_format(b_new)
+        qmn_b_new = {"int_bits": qm, "frac_bits": qn}
+        fmt["b_new_" + str(rout_it)] = qmn_b_new
 
     qm, qn = get_q_format(io_layer['output'])
     qmn_output = {"int_bits": qm, "frac_bits": qn}

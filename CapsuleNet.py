@@ -110,7 +110,7 @@ def caps_net(run_dir, hparams, train_data, train_labels, test_data, test_labels)
                       metrics='accuracy')
 
         # Training without data augmentation:
-        model.fit(x=train_data, y=train_labels, epochs=4, batch_size=100, verbose=1, workers=6,
+        model.fit(x=train_data, y=train_labels, epochs=3, batch_size=100, verbose=1, workers=6,
                   use_multiprocessing=True)
 
         # Evaluate the ANN

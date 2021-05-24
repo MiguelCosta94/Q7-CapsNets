@@ -1,6 +1,7 @@
 from tensorflow.keras import layers, initializers
 import tensorflow.keras.backend as k
 import tensorflow as tf
+import math
 
 
 class PrimaryCapsule(layers.Layer):
@@ -64,8 +65,9 @@ class Capsule(layers.Layer):
         self.output_ns_list = [None] * routings
         self.output_s_list = [None] * routings
         self.cc_list = [None] * routings
-        self.b_out_list = [None] * (routings-1)
-        self.b_bias_list = [None] * (routings-1)
+        self.b_inst_list = [None] * (routings-1)
+        self.b_old_list = [None] * (routings-1)
+        self.b_new_list = [None] * (routings-1)
 
     def build(self, input_shape):
         assert len(input_shape) >= 3, "The input Tensor should have shape=[None, input_num_capsule, input_dim_capsule]"
@@ -105,7 +107,8 @@ class Capsule(layers.Layer):
         assert self.routings > 0, 'The routings should be > 0.'
         for i in range(self.routings):
             # c.shape=[batch_size, num_capsule, input_num_capsule]
-            c = tf.nn.softmax(logits=b, axis=1)
+            c = tf.math.scalar_mul(1.0/math.log(2.0), b)
+            c = tf.nn.softmax(logits=c, axis=1)
             self.cc_list[i] = c
 
             # c_expanded.shape =  [None, num_capsule, 1, input_num_capsule]
@@ -130,9 +133,10 @@ class Capsule(layers.Layer):
                 output_expanded = k.expand_dims(x=output, axis=-1)
                 aux_b = tf.linalg.matmul(a=self.input_hat, b=output_expanded)
                 aux_b = tf.squeeze(input=aux_b, axis=-1)
-                self.b_bias_list[i] = b
+                self.b_inst_list[i] = aux_b
+                self.b_old_list[i] = b
                 b += aux_b
-                self.b_out_list[i] = b
+                self.b_new_list[i] = b
             # End: Routing algorithm -----------------------------------------------------------------------#
 
         return output
@@ -152,11 +156,14 @@ class Capsule(layers.Layer):
     def get_cc_list(self):
         return self.cc_list
 
-    def get_b_out_list(self):
-        return self.b_out_list
+    def get_b_inst_list(self):
+        return self.b_inst_list
 
-    def get_b_bias_list(self):
-        return self.b_bias_list
+    def get_b_new_list(self):
+        return self.b_new_list
+
+    def get_b_old_list(self):
+        return self.b_old_list
 
     def get_config(self):
         config = super().get_config()
