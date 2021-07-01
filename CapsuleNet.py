@@ -126,18 +126,18 @@ def main():
     start_time = time.time()
     (train_data, train_labels), (test_data, test_labels) = load_mnist()
 
-    conv1_filters = hp.HParam('conv_filters', hp.Discrete([4]))
+    conv1_filters = hp.HParam('conv_filters', hp.Discrete([256]))
     conv1_kernel_size = hp.HParam('conv_kernel_size', hp.Discrete([9]))
     conv1_stride = hp.HParam('conv_stride', hp.Discrete([1]))
     conv1_activation = hp.HParam('conv_activation', hp.Discrete(['relu']))
 
-    pcaps_num_capsule = hp.HParam('pcaps_num_capsule', hp.Discrete([4]))
+    pcaps_num_capsule = hp.HParam('pcaps_num_capsule', hp.Discrete([32]))
     pcaps_dim_capsule = hp.HParam('pcaps_dim_capsule', hp.Discrete([8]))
     pcaps_kernel_size = hp.HParam('pcaps_kernel_size', hp.Discrete([9]))
     pcaps_stride = hp.HParam('pcaps_stride', hp.Discrete([2]))
 
     caps1_num_capsule = hp.HParam('caps1_num_capsule', hp.Discrete([10]))
-    caps1_dim_capsule = hp.HParam('caps1_dim_capsule', hp.Discrete([6]))
+    caps1_dim_capsule = hp.HParam('caps1_dim_capsule', hp.Discrete([16]))
     caps1_num_routings = hp.HParam('caps1_num_routings', hp.Discrete([3]))
 
     hp_list = [conv1_filters, conv1_kernel_size, conv1_stride, conv1_activation,
