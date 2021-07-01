@@ -1,0 +1,9 @@
+layer,int_bits,frac_bits
+conv2d,0,7
+
+layer,int_bits,frac_bits
+primary_capsule,0,7
+
+layer,int_bits,frac_bits
+capsule,,
+

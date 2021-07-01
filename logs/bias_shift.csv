@@ -1,0 +1,6 @@
+layer,shift
+conv2d,3
+
+layer,shift
+primary_capsule,6
+
