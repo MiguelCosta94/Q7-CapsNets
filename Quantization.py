@@ -87,9 +87,12 @@ def get_act_q_format(model, quant_data):
     act_q_format = []
     io_range_per_layer = get_io_range_per_layer(model, quant_data)
 
-    for io_range in io_range_per_layer:
+    for i, io_range in enumerate(io_range_per_layer):
         if ('conv2d' in io_range['layer']) or ('dense' in io_range['layer']):
             entry = qb.get_act_q_format_std_layer(io_range)
+            if(len(io_range_per_layer) > i+1):
+                activation = model.get_layer(io_range_per_layer[i+1]['layer']).get_config()['activation']
+                entry = qb.limit_act_q34(entry, activation)
             act_q_format.append(entry)
 
         elif 'primary_capsule' in io_range['layer']:
@@ -312,7 +315,7 @@ def main():
                                                                       'margin_loss': margin_loss})
 
     (train_data, train_labels), (test_data, test_labels), (quant_data, quant_labels) = load_mnist()
-    act_q_format_list = get_act_q_format(model, test_data)
+    act_q_format_list = get_act_q_format(model, quant_data)
     wt_q_list, wt_q_format_list = quantize_wt(model)
     bias_q_list, bias_q_format_list = quantize_bias(model)
     output_shift_list = get_output_shift(act_q_format_list, wt_q_format_list, model)

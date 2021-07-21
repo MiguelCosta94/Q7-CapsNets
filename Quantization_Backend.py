@@ -26,7 +26,7 @@ def quantize(data, frac_bits):
 
 
 def get_layer_output(layer, input_data):
-    data = np.split(input_data, 1000)
+    data = np.split(input_data, 120)
     output = []
 
     for data_batch in data:
@@ -41,7 +41,7 @@ def get_layer_output(layer, input_data):
 
 
 def get_layer_io_range(layer, input_data):
-    data = np.split(input_data, 1000)
+    data = np.split(input_data, 120)
     input_range = init_io_range()
     output_range = init_io_range()
 
@@ -56,7 +56,7 @@ def get_layer_io_range(layer, input_data):
 
 
 def get_pcap_io_range(layer, input_data):
-    data = np.split(input_data, 1000)
+    data = np.split(input_data, 120)
     input_range = init_io_range()
     output_range = init_io_range()
     output_ns_range = init_io_range()
@@ -75,7 +75,7 @@ def get_pcap_io_range(layer, input_data):
 
 
 def get_cap_io_range(layer, input_data):
-    data = np.split(input_data, 1000)
+    data = np.split(input_data, 120)
     num_rout = layer.routings
 
     input_range = init_io_range()
@@ -215,6 +215,15 @@ def get_act_q_format_cap(io_layer, num_rout):
     fmt["output"] = qmn_output
 
     return fmt
+
+
+def limit_act_q34(act_fmt, activation):
+    if(activation == 'tanh' or activation == 'sigmoid'):
+        if(act_fmt["output"]["int_bits"] > 3):
+            act_fmt["output"]["int_bits"] = 3
+            act_fmt["output"]["frac_bits"] = 4
+
+    return act_fmt
 
 
 def search_dictionaries(key, value, list_of_dicts):
