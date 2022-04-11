@@ -1,9 +1,0 @@
-layer,shift
-conv2d,6
-
-layer,shift
-primary_capsule,12
-
-layer,input_hat_shift,output_shift_0,output_shift_1,output_shift_2,b_inst_shift_0,b_new_shift_0,b_inst_shift_1,b_new_shift_1
-capsule,8,7,7,8,7,7,8,7
-

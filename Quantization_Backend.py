@@ -26,7 +26,7 @@ def quantize(data, frac_bits):
 
 
 def get_layer_output(layer, input_data):
-    data = np.split(input_data, 120)
+    data = np.split(input_data, 100)
     output = []
 
     for data_batch in data:
@@ -41,7 +41,7 @@ def get_layer_output(layer, input_data):
 
 
 def get_layer_io_range(layer, input_data):
-    data = np.split(input_data, 120)
+    data = np.split(input_data, 100)
     input_range = init_io_range()
     output_range = init_io_range()
 
@@ -56,7 +56,7 @@ def get_layer_io_range(layer, input_data):
 
 
 def get_pcap_io_range(layer, input_data):
-    data = np.split(input_data, 120)
+    data = np.split(input_data, 100)
     input_range = init_io_range()
     output_range = init_io_range()
     output_ns_range = init_io_range()
@@ -75,7 +75,7 @@ def get_pcap_io_range(layer, input_data):
 
 
 def get_cap_io_range(layer, input_data):
-    data = np.split(input_data, 120)
+    data = np.split(input_data, 100)
     num_rout = layer.routings
 
     input_range = init_io_range()
