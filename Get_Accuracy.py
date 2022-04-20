@@ -23,11 +23,11 @@ def load_mnist():
     # Get features' values
     train_data = train_db.drop(columns=['label'])
     test_data = test_db.drop(columns=['label'])
-    train_data = train_data.values
-    test_data = test_data.values
-    scaler = preprocessing.MaxAbsScaler().fit(train_data)
-    train_data = scaler.transform(train_data)
-    test_data = scaler.transform(test_data)
+    train_data = train_data.values / 255
+    test_data = test_data.values / 255
+    #scaler = preprocessing.MaxAbsScaler().fit(train_data)
+    #train_data = scaler.transform(train_data)
+    #test_data = scaler.transform(test_data)
     train_data = train_data.reshape(-1, 28, 28, 1).astype('float32')
     test_data = test_data.reshape(-1, 28, 28, 1).astype('float32')
 
@@ -58,7 +58,7 @@ def batch_dataset_to_numpy(ds):
 
         dataset.append((image_ch, label))
 
-    data = random.shuffle(dataset)
+    #data = random.shuffle(dataset)
     data, labels = zip(*dataset)
 
     return np.array(data), np.array(labels)
@@ -125,7 +125,7 @@ def load_cifar_10(negatives=False):
 
 
 def main():
-    model = tf.keras.models.load_model("caps_net_mnist_v2.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
+    model = tf.keras.models.load_model("caps_net_mnist_v1.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
                                                                       'Capsule': Capsule, 'Length': Length,
                                                                       'margin_loss': margin_loss})
 

@@ -2,7 +2,7 @@ from tensorflow.keras import layers, initializers
 import tensorflow.keras.backend as k
 import tensorflow as tf
 import math
-from tensorflow.keras.regularizers import l2
+
 
 class PrimaryCapsule(layers.Layer):
     """
@@ -21,13 +21,12 @@ class PrimaryCapsule(layers.Layer):
         self.padding = padding
         self.output_ns = 0
         self.conv2D = layers.Conv2D(filters=dim_capsule * num_capsule, kernel_size=kernel_size, strides=strides,
-                                    padding=padding, kernel_regularizer=l2(0.0001), name='primarycap_conv2d')
-        self.batch_norm = layers.BatchNormalization()
+                                    padding=padding, kernel_initializer='he_uniform', name='primarycap_conv2d')
+
         self.reshape = layers.Reshape(target_shape=[-1, dim_capsule], name='primarycap_reshape')
 
     def call(self, inputs, training=None):
         self.output_ns = self.conv2D(inputs)
-        self.output_ns = self.batch_norm(self.output_ns)
         self.output_ns = self.reshape(self.output_ns)
         output = squash(self.output_ns)
 
@@ -132,11 +131,11 @@ class Capsule(layers.Layer):
                 # then matmul: [input_num_capsule, dim_capsule] x [dim_capsule, 1]
                 # b.shape=[batch_size, num_capsule, input_num_capsule]
                 output_expanded = k.expand_dims(x=output, axis=-1)
-                aux_b = tf.linalg.matmul(a=self.input_hat, b=output_expanded)
-                aux_b = tf.squeeze(input=aux_b, axis=-1)
-                self.b_inst_list[i] = aux_b
+                inst_b = tf.linalg.matmul(a=self.input_hat, b=output_expanded)
+                inst_b = tf.squeeze(input=inst_b, axis=-1)
+                self.b_inst_list[i] = inst_b
                 self.b_old_list[i] = b
-                b += aux_b
+                b += inst_b
                 self.b_new_list[i] = b
             # End: Routing algorithm -----------------------------------------------------------------------#
 
@@ -184,7 +183,7 @@ class Length(layers.Layer):
         super().__init__(**kwargs)
 
     def call(self, inputs, training=None):
-        squared_norm = tf.math.reduce_sum(tf.math.square(inputs), axis=-1) + k.epsilon()
+        squared_norm = tf.math.reduce_sum(tf.math.square(inputs), axis=-1)
         norm = tf.math.sqrt(squared_norm)
         return norm
 
@@ -212,6 +211,6 @@ def squash(vectors, axis=-1):
     :return: a Tensor with same shape as input vectors
     """
     squared_norm = tf.math.reduce_sum(tf.math.square(vectors), axis=axis, keepdims=True)
-    scale = (tf.math.sqrt(squared_norm) / (1 + squared_norm)) + k.epsilon()
+    scale = tf.math.sqrt(squared_norm) / (1 + squared_norm)
 
     return scale * vectors
