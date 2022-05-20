@@ -7,14 +7,13 @@ import os
 import sys
 import time
 import re
-import Quantization_Backend as qb
-import random
 import pickle
+from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
-from tensorflow.keras.utils import to_categorical
 from collections.abc import Iterable
 from CapsuleLayers import PrimaryCapsule, Capsule, Length, margin_loss
 from smallnorb_utils import SmallNORBDataset
+import Quantization_Backend as qb
 
 
 def load_mnist():
@@ -37,7 +36,6 @@ def batch_dataset_to_numpy(ds):
     dataset = []
 
     for sample in tqdm(ds, total=len(ds)):
-        #label = tf.one_hot(sample.category, 5)
         label = sample.category
 
         image_lt = sample.image_lt/255
@@ -52,7 +50,6 @@ def batch_dataset_to_numpy(ds):
 
         dataset.append((image_ch, label))
 
-    #data = random.shuffle(dataset)
     data, labels = zip(*dataset)
 
     return np.array(data), np.array(labels)
@@ -60,10 +57,25 @@ def batch_dataset_to_numpy(ds):
 
 def load_small_norb():
     dataset = SmallNORBDataset(dataset_root='../Datasets/smallnorb')
+    smallnorb_train = dataset.data['train']
     smallnorb_test = dataset.data['test']
+
+    train_data, train_labels = batch_dataset_to_numpy(smallnorb_train)
     test_data, test_labels = batch_dataset_to_numpy(smallnorb_test)
 
+    train_data_shape = train_data.shape
+    test_data_shape = test_data.shape
+    train_data = np.reshape(train_data, (train_data_shape[0], -1))
+    test_data = np.reshape(test_data, (test_data_shape[0], -1))
+    scaler = StandardScaler()
+    scaler = scaler.fit(train_data)
+    train_data = scaler.transform(train_data)
+    test_data = scaler.transform(test_data)
+    train_data = np.reshape(train_data, train_data_shape)
+    test_data = np.reshape(test_data, test_data_shape)
+
     return test_data, test_labels
+
 
 def unpickle(file):
     """load the cifar-10 data"""
@@ -117,46 +129,55 @@ def get_io_range_per_layer(model, quant_data):
         elif 'capsule' in layer.get_config()['name']:
             input_range, output_range, input_hat_range, output_ns_range, output_s_range, cc_range, b_inst_range,\
                 b_new_range, b_old_range = qb.get_cap_io_range(layer, input)
-
+            
             entry = {"layer": layer.get_config()["name"], "input": input_range, "input_hat": input_hat_range,
                      "output_ns": output_ns_range, "output_s": output_s_range, "cc": cc_range,
                      "b_inst": b_inst_range, "b_old": b_old_range, "b_new": b_new_range, "output": output_range}
+
             range_per_layer.append(entry)
 
-        else:
+        elif ('conv2d' in layer.get_config()['name']) or ('dense' in layer.get_config()['name']):
             input_range, output_range = qb.get_layer_io_range(layer, input)
+
+            if len(model.layers) > i+1:
+                if model.layers[i+1].get_config()['activation'] == 'relu':
+                    if output_range['min'] < 0:
+                        output_range['min'] = 0
+                    if output_range['max'] < 0:
+                        output_range['max'] = 0
+                        
             entry = {"layer": layer.get_config()["name"], "input": input_range, "output": output_range}
             range_per_layer.append(entry)
 
-        output = qb.get_layer_output(layer, input)
+        output = layer(input)
 
     return range_per_layer
 
 
-def get_act_q_format(model, quant_data):
+def get_act_q_format(model, quant_data, optimization):
     act_q_format = []
     io_range_per_layer = get_io_range_per_layer(model, quant_data)
 
     for i, io_range in enumerate(io_range_per_layer):
         if ('conv2d' in io_range['layer']) or ('dense' in io_range['layer']):
-            entry = qb.get_act_q_format_std_layer(io_range)
-            if(len(io_range_per_layer) > i+1):
-                activation = model.get_layer(io_range_per_layer[i+1]['layer']).get_config()['activation']
-                entry = qb.limit_act_q34(entry, activation)
+            entry = qb.get_act_q_format_std_layer(io_range, optimization)
+            #if(len(io_range_per_layer) > i+1):
+            #    activation = model.get_layer(io_range_per_layer[i+1]['layer']).get_config()['activation']
+            #    entry = qb.limit_act_q34(entry, activation)
             act_q_format.append(entry)
 
         elif 'primary_capsule' in io_range['layer']:
-            entry = qb.get_act_q_format_pcap(io_range)
+            entry = qb.get_act_q_format_pcap(io_range, optimization)
             act_q_format.append(entry)
 
         elif 'capsule' in io_range['layer']:
-            entry = qb.get_act_q_format_cap(io_range, model.get_layer(io_range["layer"]).routings)
+            entry = qb.get_act_q_format_cap(io_range, model.get_layer(io_range["layer"]).routings, optimization)
             act_q_format.append(entry)
 
     return act_q_format
 
 
-def quantize_wt(model):
+def quantize_wt(model, optimization):
     wt_q_list = []
     wt_q_format_list = []
 
@@ -165,18 +186,17 @@ def quantize_wt(model):
         if len(wt) > 0:
             wt = wt[0]        # Index 0 for weights, index 1 for bias
 
-            #if 'dense' in layer.get_config()['name']:
-            #    wt = wt.transpose()
-            #elif ('conv2d' in layer.get_config()['name']) or ('primary_capsule' in layer.get_config()['name']):
-            #    wt = wt.transpose(3, 0, 1, 2)
+            if 'dense' in layer.get_config()['name']:
+                wt = wt.transpose()
+            if ('conv2d' in layer.get_config()['name']) or ('primary_capsule' in layer.get_config()['name']):
+                wt = wt.transpose(3, 0, 1, 2)
 
             wt = wt.flatten()
             min_val = np.min(wt)
             max_val = np.max(wt)
-            qm, qn = qb.get_q_format(min_val, max_val)
+            qm, qn = qb.get_q_format(min_val, max_val, optimization)
             wt_q_format = {"layer": layer.get_config()["name"], "int_bits": qm, "frac_bits": qn}
             wt_q_format_list.append(wt_q_format)
-
             wt_q = qb.quantize(wt, qn)
             entry = {"layer": layer.get_config()["name"], "wt": wt_q}
             wt_q_list.append(entry)
@@ -184,8 +204,7 @@ def quantize_wt(model):
     return wt_q_list, wt_q_format_list
 
 
-def quantize_bias(model):
-    bias_q_list = []
+def get_bias_q_format(model, optimization):
     bias_q_format_list = []
 
     for layer in model.layers:
@@ -195,30 +214,49 @@ def quantize_bias(model):
                 bias = wt[1]        # Index 0 for weights, index 1 for bias
                 min_val = np.min(bias)
                 max_val = np.max(bias)
-                qm, qn = qb.get_q_format(min_val, max_val)
-                bias_q = qb.quantize(bias, qn)
+                qm, qn = qb.get_q_format(min_val, max_val, optimization)
                 bias_q_format = {"layer": layer.get_config()["name"], "int_bits": qm, "frac_bits": qn}
-                bias_q_dict = {"layer": layer.get_config()["name"], "bias": bias_q}
                 bias_q_format_list.append(bias_q_format)
-                bias_q_list.append(bias_q_dict)
 
-            else:
-                bias_q_format = {"layer": layer.get_config()["name"], "int_bits": None, "frac_bits": None}
-                bias_q_dict = {"layer": layer.get_config()["name"], "bias": None}
-                bias_q_format_list.append(bias_q_format)
-                bias_q_list.append(bias_q_dict)
+            #else:
+            #    bias_q_format = {"layer": layer.get_config()["name"], "int_bits": None, "frac_bits": None}
+            #    bias_q_format_list.append(bias_q_format)
 
-    return bias_q_list, bias_q_format_list
+    return bias_q_format_list
 
 
-def quantize_dataset(data):
-    min_val = np.min(data)
-    max_val = np.max(data)
-    qm, qn = qb.get_q_format(min_val, max_val)
-    data = qb.quantize(data, qn)
-    data = np.reshape(data, newshape=(np.shape(data)[0], -1))
+def get_bias_shift(act_q_format_list, wt_q_format_list, bias_q_format_list):
+    shift_list = []
 
-    return data
+    for bias_q_format in bias_q_format_list:
+        act_q_format = qb.search_dictionaries("layer", bias_q_format["layer"], act_q_format_list)
+        wt_q_format = qb.search_dictionaries("layer", bias_q_format["layer"], wt_q_format_list)
+
+        shift = act_q_format["input"]["frac_bits"] + wt_q_format["frac_bits"] - bias_q_format["frac_bits"]
+        
+        if shift < 0:
+            diff = abs(shift)
+            bias_q_format["frac_bits"] -= diff
+            shift = 0 
+
+        entry = {"layer": bias_q_format["layer"], "shift": shift}
+        shift_list.append(entry)
+
+    return shift_list, bias_q_format_list
+
+
+def quantize_bias(model, bias_q_format_list):
+    bias_q_list = []
+
+    for bias_q_format in bias_q_format_list:
+        layer = model.get_layer(name=bias_q_format["layer"])
+        wt = layer.get_weights()
+        bias = wt[1]        # Index 0 for weights, index 1 for bias
+        bias_q = qb.quantize(bias, bias_q_format["frac_bits"])
+        bias_q_dict = {"layer": layer.get_config()["name"], "bias": bias_q}
+        bias_q_list.append(bias_q_dict)
+
+    return bias_q_list
 
 
 def get_output_shift(act_q_format_list, wt_q_format_list, model):
@@ -260,19 +298,15 @@ def get_output_shift(act_q_format_list, wt_q_format_list, model):
     return shift_list
 
 
-def get_bias_shift(bias_q_format_list, act_q_format_list, wt_q_format_list, model):
-    shift_list = []
+def quantize_dataset(data, optimization):
+    data = data.flatten()
+    min_val = np.min(data)
+    max_val = np.max(data)
+    qm, qn = qb.get_q_format(min_val, max_val, optimization)
+    data = qb.quantize(data, qn)
+    data = data.astype('int8')
 
-    for bias_q_format in bias_q_format_list:
-        if bias_q_format["frac_bits"] is not None:
-            act_q_format = qb.search_dictionaries("layer", bias_q_format["layer"], act_q_format_list)
-            wt_q_format = qb.search_dictionaries("layer", bias_q_format["layer"], wt_q_format_list)
-
-            shift = act_q_format["input"]["frac_bits"] + wt_q_format["frac_bits"] - bias_q_format["frac_bits"]
-            entry = {"layer": bias_q_format["layer"], "shift": shift}
-            shift_list.append(entry)
-
-    return shift_list
+    return data
 
 
 def dict_to_header_file(list_of_dict, module_name, file_name):
@@ -339,52 +373,62 @@ def list_to_csv(data, filename):
                 fp.write(str(sample) + '\n\n')
 
 
-def get_layer_size(model):
+def dataset_to_bin(data, labels, data_filename, labels_filename):
+    for i, row in enumerate(data):
+        row_bin = row.tobytes()
 
-    print("WEIGHTS")
-    for layer in model.layers:
-        wt = layer.get_weights()
-        if len(wt) > 0:
-            wt = wt[0]        # Index 0 for weights, index 1 for bias
-            print("Layer: ", layer.get_config()['name'], " Size: ", sys.getsizeof(wt))
+        if i == 0:
+            data_byte = bytearray(row_bin)
+        else:
+            data_byte.extend(row_bin)
 
-    print("BIAS")
-    for layer in model.layers:
-        wt = layer.get_weights()
-        if len(wt) > 0:
-            if len(wt) > 1:
-                bias = wt[1]        # Index 0 for weights, index 1 for bias
-                print("Layer: ", layer.get_config()['name'], " Size: ", sys.getsizeof(bias))
+    labels = np.array(labels, dtype=np.int8)
+    labels_byte = bytearray(labels)
 
+    write_to_bin_file(data_byte, data_filename)
+    write_to_bin_file(labels_byte, labels_filename)
+
+
+def write_to_bin_file(data, file_name):
+    dir = str(pathlib.Path(__file__).parent.absolute()) + "/logs"
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    dir += '/' + file_name
+
+    with open(dir, 'wb') as f:
+        f.write(data)
 
 
 def main():
     start_time = time.time()
-    model = tf.keras.models.load_model("caps_net_mnist_v1.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
+    optimization = True
+    
+    model = tf.keras.models.load_model("caps_net_snorb.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
                                                                       'Capsule': Capsule, 'Length': Length,
                                                                       'margin_loss': margin_loss})
-
-    test_data, test_labels = load_mnist()
-    act_q_format_list = get_act_q_format(model, test_data)
-    wt_q_list, wt_q_format_list = quantize_wt(model)
-    bias_q_list, bias_q_format_list = quantize_bias(model)
+    
+    test_data, test_labels = load_small_norb()
+    act_q_format_list = get_act_q_format(model, test_data, optimization)
+    bias_q_format_list = get_bias_q_format(model, optimization)
+    wt_q_list, wt_q_format_list = quantize_wt(model, optimization)
+    bias_shift_list, bias_q_format_list = get_bias_shift(act_q_format_list, wt_q_format_list, bias_q_format_list)
+    bias_q_list = quantize_bias(model, bias_q_format_list)
     output_shift_list = get_output_shift(act_q_format_list, wt_q_format_list, model)
-    bias_shift_list = get_bias_shift(bias_q_format_list, act_q_format_list, wt_q_format_list, model)
-    test_data_q = quantize_dataset(test_data)
+    test_data_q = quantize_dataset(test_data, optimization)
 
     dict_to_header_file(wt_q_list, "wt", "wt_q.h")
     dict_to_csv(wt_q_format_list, "wt_q_format.csv")
     dict_to_header_file(bias_q_list, "bias", "bias_q.h")
     dict_to_csv(bias_q_format_list, "bias_q_format.csv")
-    list_to_csv(test_data_q, "test_data_q.csv")
-    list_to_csv(test_labels, "test_labels.csv")
+    #list_to_csv(test_data_q, "test_data_q.csv")
+    #list_to_csv(test_labels, "test_labels.csv")
+    dataset_to_bin(test_data_q, test_labels, 'data.bin', 'labels.bin')
     dict_to_csv(act_q_format_list, "act_q_format.csv")
     dict_to_csv(output_shift_list, "output_shift.csv")
     dict_to_csv(bias_shift_list, "bias_shift.csv")
 
     print("Total time: ", time.time()-start_time)
 
-    get_layer_size(model)
 
 if __name__=='__main__':
     main()

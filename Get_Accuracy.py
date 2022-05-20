@@ -1,13 +1,10 @@
 import tensorflow as tf
 import pandas as pd
-import pathlib
-import time
 import numpy as np
-import random
 import os
 import pickle
 from tqdm import tqdm
-from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.utils import to_categorical
 from CapsuleLayers import PrimaryCapsule, Capsule, Length, margin_loss
 from smallnorb_utils import SmallNORBDataset
@@ -15,29 +12,19 @@ from smallnorb_utils import SmallNORBDataset
 
 def load_mnist():
     dir = os.path.join(os.path.dirname(__file__), '../Datasets/mnist/')
-    train_db_dir = str(dir) + "mnist_train.csv"
     test_db_dir = str(dir) + "mnist_test.csv"
-    train_db = pd.read_csv(train_db_dir, delimiter=',')
     test_db = pd.read_csv(test_db_dir, delimiter=',')
 
     # Get features' values
-    train_data = train_db.drop(columns=['label'])
     test_data = test_db.drop(columns=['label'])
-    train_data = train_data.values / 255
     test_data = test_data.values / 255
-    #scaler = preprocessing.MaxAbsScaler().fit(train_data)
-    #train_data = scaler.transform(train_data)
-    #test_data = scaler.transform(test_data)
-    train_data = train_data.reshape(-1, 28, 28, 1).astype('float32')
     test_data = test_data.reshape(-1, 28, 28, 1).astype('float32')
 
     # Get labels
-    train_labels = train_db['label'].values
     test_labels = test_db['label'].values
-    train_labels = to_categorical(train_labels.astype('float32'))
     test_labels = to_categorical(test_labels.astype('float32'))
 
-    return train_data, train_labels, test_data, test_labels
+    return test_data, test_labels
 
 
 def batch_dataset_to_numpy(ds):
@@ -58,7 +45,6 @@ def batch_dataset_to_numpy(ds):
 
         dataset.append((image_ch, label))
 
-    #data = random.shuffle(dataset)
     data, labels = zip(*dataset)
 
     return np.array(data), np.array(labels)
@@ -72,7 +58,18 @@ def load_small_norb():
     train_data, train_labels = batch_dataset_to_numpy(smallnorb_train)
     test_data, test_labels = batch_dataset_to_numpy(smallnorb_test)
 
-    return train_data, train_labels, test_data, test_labels
+    train_data_shape = train_data.shape
+    test_data_shape = test_data.shape
+    train_data = np.reshape(train_data, (train_data_shape[0], -1))
+    test_data = np.reshape(test_data, (test_data_shape[0], -1))
+    scaler = StandardScaler()
+    scaler = scaler.fit(train_data)
+    train_data = scaler.transform(train_data)
+    test_data = scaler.transform(test_data)
+    train_data = np.reshape(train_data, train_data_shape)
+    test_data = np.reshape(test_data, test_data_shape)
+
+    return test_data, test_labels
 
 
 def unpickle(file):
@@ -86,25 +83,6 @@ def unpickle(file):
 def load_cifar_10(negatives=False):
     data_dir = os.path.join(os.path.dirname(__file__), '../Datasets/cifar-10-batches-py')
 
-    # training data
-    cifar_train_data = None
-    cifar_train_labels = []
-
-    for i in range(1, 6):
-        cifar_train_data_dict = unpickle(data_dir + "/data_batch_{}".format(i))
-        if i == 1:
-            cifar_train_data = cifar_train_data_dict[b'data']
-        else:
-            cifar_train_data = np.vstack((cifar_train_data, cifar_train_data_dict[b'data']))
-        cifar_train_labels += cifar_train_data_dict[b'labels']
-
-    cifar_train_data = cifar_train_data.reshape((len(cifar_train_data), 3, 32, 32))
-    if negatives:
-        cifar_train_data = cifar_train_data.transpose(0, 2, 3, 1).astype(np.float32)
-    else:
-        cifar_train_data = np.rollaxis(cifar_train_data, 1, 4)
-    cifar_train_labels = np.array(cifar_train_labels)
-
     cifar_test_data_dict = unpickle(data_dir + "/test_batch")
     cifar_test_data = cifar_test_data_dict[b'data']
     cifar_test_labels = cifar_test_data_dict[b'labels']
@@ -116,25 +94,30 @@ def load_cifar_10(negatives=False):
         cifar_test_data = np.rollaxis(cifar_test_data, 1, 4)
     cifar_test_labels = np.array(cifar_test_labels)
 
-    cifar_train_data = cifar_train_data / 255
     cifar_test_data = cifar_test_data / 255
 
-    return cifar_train_data, to_categorical(cifar_train_labels), \
-        cifar_test_data, to_categorical(cifar_test_labels)
+    return cifar_test_data, to_categorical(cifar_test_labels)
 
 
 
 def main():
-    model = tf.keras.models.load_model("caps_net_mnist_v1.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
+    model = tf.keras.models.load_model("caps_net_snorb.h5", custom_objects={'PrimaryCapsule': PrimaryCapsule,
                                                                       'Capsule': Capsule, 'Length': Length,
                                                                       'margin_loss': margin_loss})
 
-    train_data, train_labels, test_data, test_labels = load_mnist()
+    test_data, test_labels = load_small_norb()
 
-    start_time = time.time()
+    #for i, layer in enumerate(model.layers):
+    #    if i == 0:
+    #        input = test_data
+    #    output = layer(input)
+    #    input = output
+    #    if i == 8:
+    #        output = tf.math.scalar_mul(pow(2.0,1.0), output)
+    #        output = tf.cast(output, tf.int32)
+    #        output = tf.keras.backend.print_tensor(output, summarize=-1)
+
     _, accuracy = model.evaluate(test_data, test_labels)
-    print("Total time: ", time.time() - start_time)
-
     print("Accuracy: ", accuracy)
 
 if __name__=='__main__':

@@ -2,6 +2,7 @@ from tensorflow.keras import layers, initializers
 import tensorflow.keras.backend as k
 import tensorflow as tf
 import math
+from tensorflow.keras.constraints import max_norm
 
 
 class PrimaryCapsule(layers.Layer):
@@ -12,7 +13,7 @@ class PrimaryCapsule(layers.Layer):
     :param n_channels: the number of types of capsules
     :return: output tensor, shape=[None, num_capsule, dim_capsule]
     """
-    def __init__(self, num_capsule, dim_capsule, kernel_size, strides, padding, **kwargs):
+    def __init__(self, num_capsule, dim_capsule, kernel_size, strides, padding, kernel_constraint=None, **kwargs):
         super().__init__(**kwargs)
         self.num_capsule = num_capsule
         self.dim_capsule = dim_capsule
@@ -21,7 +22,8 @@ class PrimaryCapsule(layers.Layer):
         self.padding = padding
         self.output_ns = 0
         self.conv2D = layers.Conv2D(filters=dim_capsule * num_capsule, kernel_size=kernel_size, strides=strides,
-                                    padding=padding, kernel_initializer='he_uniform', name='primarycap_conv2d')
+                                    padding=padding, kernel_initializer='he_uniform', kernel_constraint=kernel_constraint,
+                                    name='primarycap_conv2d')
 
         self.reshape = layers.Reshape(target_shape=[-1, dim_capsule], name='primarycap_reshape')
 
@@ -107,8 +109,8 @@ class Capsule(layers.Layer):
         assert self.routings > 0, 'The routings should be > 0.'
         for i in range(self.routings):
             # c.shape=[batch_size, num_capsule, input_num_capsule]
-            c = tf.math.scalar_mul(1.0/math.log(2.0), b)
-            c = tf.nn.softmax(logits=c, axis=1)
+            #c = tf.math.scalar_mul(1.0/math.log(2.0), b)
+            c = tf.nn.softmax(logits=b, axis=1)
             self.cc_list[i] = c
 
             # c_expanded.shape =  [None, num_capsule, 1, input_num_capsule]
@@ -140,6 +142,7 @@ class Capsule(layers.Layer):
             # End: Routing algorithm -----------------------------------------------------------------------#
 
         return output
+
 
     def set_weights(self, weights):
         self.w = weights
