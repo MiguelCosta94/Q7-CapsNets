@@ -1,5 +1,6 @@
 # Quantization Framework
-The quantization framework receives a .h5 Capsule Network developed in TensorFlow and returns a "logs" folder with:
+The quantization framework receives a .h5 Capsule Network developed in TensorFlow and returns a "logs" folder with the files listed below. In the input model, the name of the primary capsule layer must start with "primary_capsule". The name of capsule layers must start with "capsule".
+
 | File | Content |
 | ------ | ------ |
 | act_q_format.csv | Quantization format used in the input and output of each layer and in-between computations |
