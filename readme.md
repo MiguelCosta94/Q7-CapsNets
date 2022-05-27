@@ -1,5 +1,5 @@
 # Q7-CapsNets
-## Capsule Networks (Dynamic Routing) on Arm Cortex-M and RISC-V GAP8 MCUs
+## Capsule Networks (Dynamic Routing) on Arm Cortex-M and RISC-V GAP8
 
 ## Features
 - C API (based on CMSIS-NN) for the execution of quantized Capsule Networks on Arm Cortex-M MCUs 
