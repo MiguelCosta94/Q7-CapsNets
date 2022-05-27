@@ -2,7 +2,7 @@
 The quantization framework receives a .h5 Capsule Network developed in TensorFlow and returns a "logs" folder with:
 | File | Content |
 | ------ | ------ |
-| act_q_format.csv | Quantizaion format used in the input and output of each layer and in-between computations |
+| act_q_format.csv | Quantization format used in the input and output of each layer and in-between computations |
 | bias_q.h | Header file with the quantized bias |
 | bias_q_format.csv | Quantization format used in the bias of each layer |
 | bias_shift.csv | Bias shift used per layer to avoid saturation |
@@ -20,4 +20,4 @@ The quantization framework receives a .h5 Capsule Network developed in TensorFlo
 | CapsuleNet_SNORB.py | Example implementing a CapsNet for the smallNORB dataset |
 | Quantization .py | Main quantization script |
 | Quantization_Backend.py | Auxiliary functions for the main quantization script |
-| cmsis_test.py | Script that receives predictions via seriral port from Arm Cortex-M MCUs and returns the accuracy |
+| cmsis_test.py | Script that receives predictions via serial port from Arm Cortex-M MCUs and returns the accuracy |
