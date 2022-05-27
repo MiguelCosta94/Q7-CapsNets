@@ -1,5 +1,5 @@
 # Quantization Framework
-The quantization framework receives a .h5 Capsule Networks developed in TensorFlow and returns a "logs" folder with:
+The quantization framework receives a .h5 Capsule Network developed in TensorFlow and returns a "logs" folder with:
 | File | Content |
 | ------ | ------ |
 | act_q_format.csv | Quantizaion format used in the input and output of each layer and in-between computations |
