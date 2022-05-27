@@ -1,0 +1,68 @@
+#define DATASET_SIZE				10000
+
+#define CONV1_IN_DIM				32
+#define CONV1_CH_DIM				3
+#define CONV1_NUM_FILTERS		32
+#define CONV1_KERNEL_SIZE		3
+#define CONV1_PADDING				0
+#define	CONV1_STRIDE				1
+#define CONV1_OUT_DIM				30
+#define CONV1_BIAS_LSHIFT		6
+#define CONV1_OUT_RSHIFT		10
+
+#define CONV2_IN_DIM				CONV1_OUT_DIM
+#define CONV2_CH_DIM				CONV1_NUM_FILTERS
+#define CONV2_NUM_FILTERS		32
+#define CONV2_KERNEL_SIZE		3
+#define CONV2_PADDING				0
+#define	CONV2_STRIDE				1
+#define CONV2_OUT_DIM				28
+#define CONV2_BIAS_LSHIFT		4
+#define CONV2_OUT_RSHIFT		9
+
+#define CONV3_IN_DIM				CONV2_OUT_DIM
+#define CONV3_CH_DIM				CONV2_NUM_FILTERS
+#define CONV3_NUM_FILTERS		64
+#define CONV3_KERNEL_SIZE		3
+#define CONV3_PADDING				0
+#define	CONV3_STRIDE				2
+#define CONV3_OUT_DIM				13
+#define CONV3_BIAS_LSHIFT		3
+#define CONV3_OUT_RSHIFT		8
+
+#define CONV4_IN_DIM				CONV3_OUT_DIM
+#define CONV4_CH_DIM				CONV3_NUM_FILTERS
+#define CONV4_NUM_FILTERS		64
+#define CONV4_KERNEL_SIZE		3
+#define CONV4_PADDING				0
+#define	CONV4_STRIDE				2
+#define CONV4_OUT_DIM				6
+#define CONV4_BIAS_LSHIFT		3
+#define CONV4_OUT_RSHIFT		9
+
+#define PCAP_NUM_CAP	 			16
+#define PCAP_DIM_CAP				4
+#define PCAP_IN_DIM					CONV4_OUT_DIM
+#define PCAP_CH_DIM					CONV4_NUM_FILTERS
+#define PCAP_KERNEL_SIZE		3
+#define PCAP_PADDING				0
+#define	PCAP_STRIDE					2	
+#define PCAP_OUT_DIM				2
+#define PCAP_SQUASH_IN_QN		1
+#define PCAP_SQUASH_OUT_QN	7
+#define PCAP_BIAS_LSHIFT		3	
+#define PCAP_OUT_RSHIFT			10
+
+#define CAP_NUM_CAP					10
+#define CAP_DIM_CAP					5
+#define CAP_INPUT_NUM_CAP		PCAP_OUT_DIM * PCAP_OUT_DIM * PCAP_NUM_CAP
+#define CAP_INPUT_DIM_CAP		PCAP_DIM_CAP
+#define CAP_NUM_ROUT				3
+#define CAP_SQUASH_IN_QN		{7,6,5}
+#define CAP_SQUASH_OUT_QN		{8,7,7}
+#define CAP_IN_HAT_RSHIFT		7
+#define CAP_OUT_RSHIFTS			{6, 7, 8}
+#define CAP_B_INST_RSHIFTS	{8, 8}	
+#define CAP_B_NEW_RSHIFTS		{7, 6}
+
+#define INPUT_DATA_SIZE			CONV1_IN_DIM * CONV1_IN_DIM * CONV1_CH_DIM
