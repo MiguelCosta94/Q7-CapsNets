@@ -67,24 +67,24 @@ void mat_mult_q7_simd(matrix_instance_q7 *pSrcA, matrix_instance_q7 *pSrcB, uint
 	q15_t *p_in_b;
 	uint16_t num_cols_a = pSrcA->numCols;
 	uint16_t num_cols_b = pSrcB->numCols;
-    uint16_t row = pSrcA->numRows;
+  uint16_t row = pSrcA->numRows;
 	uint16_t col, col_cnt;
 	int32_t sum;
-    uint16_t i = 0;
+  uint16_t i = 0;
 	q7_t *px = pDst->pData;
 	int32_t div = 1 << out_rshift;
 
 	/* The following loop performs the dot-product of each row in pSrcA with each column in pSrcB */
-    /* row loop */
-    while(row > 0)
-    {
-        /* For every row wise process, column loop counter is to be initiated */
-        col = num_cols_b;
+	/* row loop */
+	while(row > 0)
+	{
+		/* For every row wise process, column loop counter is to be initiated */
+		col = num_cols_b;
 
-        /* For every row wise process, p_in_b pointer is set to starting address of transposed pSrcB data */
-        p_in_b = buffer;
+		/* For every row wise process, pIn2 pointer is set to starting address of transposed pSrcB data */
+		p_in_b = buffer;
 
-      	/* column loop */
+		/* column loop */
 		do
 		{
 			/* Set variable sum, that acts as accumulator, to zero */
@@ -99,16 +99,16 @@ void mat_mult_q7_simd(matrix_instance_q7 *pSrcA, matrix_instance_q7 *pSrcB, uint
 			/* matrix multiplication */
 			while(col_cnt > 0U)
 			{
-                q31_t in_a_11, in_a_12, in_b_11, in_b_12;
+				q31_t in_a_11, in_a_12, in_b_11, in_b_12;
 
 				/* Read and expand one q7 word into two q15 words */
-				p_in_a = read_and_pad_reordered(p_in_a, &in_a_11, &in_a_12);
-                /* Read and expand one q7 word into two q15 words */
+				p_in_a = (q7_t*)read_and_pad(p_in_a, &in_a_11, &in_a_12);
+				/* Read and expand one q7 word into two q15 words */
 				in_b_11 = read_q15x2_ia((q15_t**)&p_in_b);
 				in_b_12 = read_q15x2_ia((q15_t**)&p_in_b);
 
-                sum = __SMLAD(in_a_11, in_b_11, sum);
-                sum = __SMLAD(in_a_12, in_b_12, sum);
+				sum = __SMLAD(in_a_11, in_b_11, sum);
+				sum = __SMLAD(in_a_12, in_b_12, sum);
 
 				/* Decrement loop counter */
 				col_cnt--;
@@ -119,10 +119,7 @@ void mat_mult_q7_simd(matrix_instance_q7 *pSrcA, matrix_instance_q7 *pSrcB, uint
 
 			while (col_cnt > 0U)
 			{
-				/* c(m,n) = a(1,1) * b(1,1) + a(1,2) * b(2,1) + .... + a(m,p) * b(p,n) */
 				sum += *p_in_a++ * *p_in_b++;
-
-				/* Decrement loop counter */
 				col_cnt--;
 			}
 
@@ -136,8 +133,6 @@ void mat_mult_q7_simd(matrix_instance_q7 *pSrcA, matrix_instance_q7 *pSrcB, uint
 		} while (col > 0U);
 
 		i = i + num_cols_a;
-
-		/* Decrement row loop counter */
 		row--;
 	}
 }

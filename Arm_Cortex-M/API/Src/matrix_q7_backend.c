@@ -1,5 +1,6 @@
 #include "matrix_q7_backend.h"
 #include "arm_math.h"
+#include "arm_nnsupportfunctions.h"
 
 
 void transpose_matrix_q7(q7_t *in_matrix, uint16_t rows, uint16_t columns, q7_t *out_matrix)
@@ -91,6 +92,7 @@ void matrix_q7_to_q15_transposed(q7_t *in_matrix, uint16_t rows, uint16_t column
 {
 	q15_t *px;				/* Temporary output data matrix pointer */
 	uint32_t col, i=0U, in, row = rows;
+	q31_t in_b_11, in_b_12;
 	
 	do
 	{
@@ -105,13 +107,13 @@ void matrix_q7_to_q15_transposed(q7_t *in_matrix, uint16_t rows, uint16_t column
 		while (col > 0U)
 		{
 			/* Read four elements from row */
-			in = read_q7x4_ia ((q7_t **) &in_matrix);
+			in_matrix = (q7_t*)read_and_pad(in_matrix, &in_b_11, &in_b_12);
 
 			/* Unpack and store first element in destination */
 #ifndef ARM_MATH_BIG_ENDIAN
-			*px = (q15_t) (in & (q31_t) 0x000000ff);
+			*px = (q15_t) (in_b_11 & (q31_t) 0x0000ffff);
 #else
-			*px = (q15_t) ((in & (q31_t) 0xff000000) >> 24);
+			*px = (q15_t) ((in_b_11 & (q31_t) 0xffff0000) >> 16);
 #endif /* #ifndef ARM_MATH_BIG_ENDIAN */
 
 			/* Update pointer px to point to next row of transposed matrix */
@@ -119,9 +121,9 @@ void matrix_q7_to_q15_transposed(q7_t *in_matrix, uint16_t rows, uint16_t column
 
 			/* Unpack and store second element in destination */
 #ifndef ARM_MATH_BIG_ENDIAN
-			*px = (q15_t) ((in & (q31_t) 0x0000ff00) >> 8);
+			*px = (q15_t) ((in_b_11 & (q31_t) 0xffff0000) >> 16);
 #else
-			*px = (q15_t) ((in & (q31_t) 0x00ff0000) >> 16);
+			*px = (q15_t) (in_b_11 & (q31_t) 0x0000ffff);
 #endif /* #ifndef ARM_MATH_BIG_ENDIAN */
 
 			/* Update pointer px to point to next row of transposed matrix */
@@ -129,9 +131,9 @@ void matrix_q7_to_q15_transposed(q7_t *in_matrix, uint16_t rows, uint16_t column
 				
 			/* Unpack and store thrid element in destination */
 #ifndef ARM_MATH_BIG_ENDIAN
-			*px = (q15_t) ((in & (q31_t) 0x00ff0000) >> 16);
+			*px = (q15_t) (in_b_12 & (q31_t) 0x0000ffff);
 #else
-			*px = (q15_t) ((in & (q31_t) 0x0000ff00) >> 8);
+			*px = (q15_t) ((in_b_12 & (q31_t) 0xffff0000) >> 16);
 #endif /* #ifndef ARM_MATH_BIG_ENDIAN */
 
 			/* Update pointer px to point to next row of transposed matrix */
@@ -139,9 +141,9 @@ void matrix_q7_to_q15_transposed(q7_t *in_matrix, uint16_t rows, uint16_t column
 
 			/* Unpack and store fourth element in destination */
 #ifndef ARM_MATH_BIG_ENDIAN
-			*px = (q15_t) ((in & (q31_t) 0xff000000) >> 24);
+			*px = (q15_t) ((in_b_12 & (q31_t) 0xffff0000) >> 16);
 #else
-			*px = (q15_t) (in & (q31_t) 0x000000ff);
+			*px = (q15_t) (in_b_12 & (q31_t) 0x0000ffff);
 #endif /* #ifndef ARM_MATH_BIG_ENDIAN */
 
 			/* Update pointer px to point to next row of transposed matrix */
